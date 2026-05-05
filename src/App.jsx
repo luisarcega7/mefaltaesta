@@ -131,12 +131,13 @@ export default function App(){
   const[syncing,setSyncing]=useState(false);
   const[lastSync,setLastSync]=useState(null);
   const syncTimer=useRef(null);
+  const[totalGlobal,setTotalGlobal]=useState(0);
 
   // ─── Donation tips (random rotation) ───
   const TIPS=[
-    {emoji:"☕",label:"Café",link:"https://mpago.la/1ibN2zK"},
-    {emoji:"🍺",label:"Chela",link:"https://mpago.la/2GLeU72"},
-    {emoji:"🌮",label:"Tacos",link:"https://mpago.la/1r4gTSc"},
+    {emoji:"☕",label:"Si te gustó doname pa un",link:"https://mpago.la/1ibN2zK"},
+    {emoji:"🍺",label:"Si te gustó doname pa una",link:"https://mpago.la/2GLeU72"},
+    {emoji:"🌮",label:"Si te gustó doname pa unos",link:"https://mpago.la/1r4gTSc"},
   ];
   const[tipIdx,setTipIdx]=useState(()=>Math.floor(Math.random()*3));
   useEffect(()=>{const iv=setInterval(()=>setTipIdx(p=>(p+1)%3),15000);return()=>clearInterval(iv);},[]);
@@ -159,6 +160,16 @@ export default function App(){
       }catch{localStorage.removeItem("mfa-auth");setInitialLoading(false);}
     }else{setInitialLoading(false);}
   },[]);
+
+  // ─── Fetch global sticker count ───
+  useEffect(()=>{
+    fetch(`${SUPA_URL}/rest/v1/rpc/get_global_sticker_count`,{method:"POST",headers:{"apikey":SUPA_KEY,"Content-Type":"application/json"}})
+      .then(r=>r.json()).then(n=>{if(typeof n==="number")setTotalGlobal(n);}).catch(()=>{});
+  },[lastSync]);
+
+  // ─── Google Analytics helper ───
+  const gtag=(...args)=>{if(window.gtag)window.gtag(...args);};
+  const trackEvent=(action,category,label)=>gtag("event",action,{event_category:category,event_label:label});
 
   // ─── Load stickers from Supabase ───
   const loadStickers=async(uid,tok)=>{
@@ -201,6 +212,7 @@ export default function App(){
         const u=await supa.getUser(res.access_token);
         setUser(u);
         await loadStickers(u.id,res.access_token);
+        trackEvent(isSignup?"sign_up":"login","auth",authEmail);
       }else if(isSignup){
         setAuthErr("Revisa tu email para confirmar tu cuenta.");
       }
@@ -337,14 +349,16 @@ export default function App(){
 
   // ─── Header ───
   const Hdr=({t,back,onBack})=>(
-    <div style={{background:`linear-gradient(180deg,${X.pr},#a01030)`,padding:"14px 14px 10px",textAlign:"center",position:"relative"}}>
-      {back&&<button onClick={onBack} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:7,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>}
-      <h1 style={{fontSize:16,fontWeight:800,color:"#fff",margin:0,textTransform:"uppercase",letterSpacing:-0.3}}>{t}</h1>
-      <div style={{fontSize:8,color:"rgba(255,255,255,0.55)",marginTop:1,letterSpacing:2,textTransform:"uppercase"}}>Mundial 2026</div>
-      {user&&<div style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:4}}>
+    <div style={{background:`linear-gradient(180deg,${X.pr},#a01030)`,padding:"10px 14px",position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+      {back&&<button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:7,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>}
+      <div style={{flex:1,minWidth:0}}>
+        <h1 style={{fontSize:16,fontWeight:800,color:"#fff",margin:0,textTransform:"uppercase",letterSpacing:-0.3,lineHeight:1.1}}>{t}</h1>
+        <div className="hdr-sub" style={{fontSize:8,color:"rgba(255,255,255,0.55)",marginTop:1,letterSpacing:2,textTransform:"uppercase"}}>Mundial 2026</div>
+      </div>
+      {user&&<div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
         {syncing&&<div style={{width:6,height:6,borderRadius:3,background:X.gd,animation:"pulse 1s infinite"}}/>}
-        <button onClick={()=>window.open(tip.link,"_blank")} style={{background:X.gd,border:"none",color:"#000",fontSize:10,padding:"4px 8px",borderRadius:6,cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",gap:3,transition:"all 0.3s"}}>
-          <span style={{fontSize:14}}>{tip.emoji}</span>{tip.label}
+        <button onClick={()=>{trackEvent("click","donation",tip.emoji);window.open(tip.link,"_blank");}} style={{background:X.gd,border:"none",color:"#000",fontSize:9,padding:"6px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",gap:4,transition:"all 0.3s",whiteSpace:"nowrap",lineHeight:1.2,textAlign:"left"}}>
+          {tip.label} <span style={{fontSize:16}}>{tip.emoji}</span>
         </button>
         <button onClick={logout} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:9,padding:"3px 6px",borderRadius:4,cursor:"pointer",fontWeight:600}}>Salir</button>
       </div>}
@@ -410,6 +424,9 @@ export default function App(){
       <div style={{display:"flex",justifyContent:"space-around",padding:"10px",background:X.sf,borderBottom:`1px solid ${X.bd}`}}>
         {[{v:owned,l:"Tengo",c:X.gn},{v:miss,l:"Faltan",c:X.pr},{v:dupes,l:"Repes",c:X.gd},{v:`${pct}%`,l:"Avance",c:"#fff"}].map(x=>(<div key={x.l} style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:800,color:x.c}}>{x.v}</div><div style={{fontSize:8,color:X.dm,textTransform:"uppercase",letterSpacing:1,marginTop:1}}>{x.l}</div></div>))}
       </div>
+      {totalGlobal>0&&<div style={{background:"rgba(240,192,64,0.08)",padding:"6px 12px",textAlign:"center",fontSize:11,color:X.gd,fontWeight:600,borderBottom:`1px solid ${X.bd}`}}>
+        ⚽ {totalGlobal.toLocaleString("en-US")} cartitas registradas al momento
+      </div>}
       <div style={{height:3,background:X.bd,margin:"0 12px",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg,${X.pr},${X.gd})`,borderRadius:2,transition:"width 0.5s"}}/></div>
       <div style={{padding:"12px 12px 6px"}}>
         <div style={{fontSize:10,fontWeight:700,color:X.dm,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Introducción</div>
@@ -436,10 +453,10 @@ export default function App(){
       <div style={{margin:"8px 12px 16px",padding:"12px 14px",background:"linear-gradient(135deg,rgba(240,192,64,0.12),rgba(232,54,79,0.08))",borderRadius:10,border:"1px solid rgba(240,192,64,0.2)"}}>
         <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>¿Te gusta la app? {tip.emoji}</div>
         <div style={{fontSize:10,color:X.dm,marginBottom:8}}>Esta app es gratis. Si te sirve, una donación ayuda a mantenerla.</div>
-        <div style={{display:"flex",gap:6}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {TIPS.map((t,i)=>(
-            <button key={i} onClick={()=>window.open(t.link,"_blank")} style={{flex:1,background:i===tipIdx?X.gd:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"8px 4px",fontSize:11,fontWeight:700,color:i===tipIdx?"#000":X.tx,cursor:"pointer",transition:"all 0.3s"}}>
-              {t.emoji} {t.label}
+            <button key={i} onClick={()=>{trackEvent("click","donation_banner",t.emoji);window.open(t.link,"_blank");}} style={{flex:1,minWidth:80,background:i===tipIdx?X.gd:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"8px 6px",fontSize:10,fontWeight:700,color:i===tipIdx?"#000":X.tx,cursor:"pointer",transition:"all 0.3s",lineHeight:1.3}}>
+              {t.label} {t.emoji}
             </button>
           ))}
         </div>
@@ -458,6 +475,7 @@ export default function App(){
     TEAMS.forEach(t=>t.stickers.forEach(s=>{if(!col[s.id]||col[s.id]===0)m.push({...s,tn:t.n,tf:t.f});}));
 
     const shareWhatsApp=()=>{
+      trackEvent("click","whatsapp_share","faltantes");
       const lines=m.slice(0,50).map(s=>`${s.id} - ${s.name}`);
       const msg=`Me faltan ${m.length} estampas del álbum del Mundial 2026:\n\n${lines.join("\n")}${m.length>50?`\n...y ${m.length-50} más`:""}\n\nRegistra las tuyas en mefaltaesta.com`;
       window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
@@ -474,8 +492,18 @@ export default function App(){
       </div></div>);
   };
 
-  const vDup=()=>{const d=[];TEAMS.forEach(t=>t.stickers.forEach(s=>{const q=col[s.id]||0;if(q>1)d.push({...s,qty:q,tf:t.f});}));
-    return(<div><Hdr t={`Repetidas (${dupes})`}/><div style={{padding:"8px 12px"}}>{d.length===0?<div style={{textAlign:"center",padding:40,color:X.dm,fontSize:12}}>No tienes repetidas aún</div>
+  const vDup=()=>{const d=[];TEAMS.forEach(t=>t.stickers.forEach(s=>{const q=col[s.id]||0;if(q>1)d.push({...s,qty:q,tf:t.f,tn:t.n});}));
+    const shareRepesWA=()=>{
+      trackEvent("click","whatsapp_share","repetidas");
+      const lines=d.slice(0,50).map(s=>`${s.id} - ${s.name} (×${s.qty})`);
+      const msg=`🔄 Estas son mis repetidas del Mundial 2026:\n\n${lines.join("\n")}${d.length>50?`\n...y ${d.length-50} más`:""}\n\nRegistra las tuyas en mefaltaesta.com`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
+    };
+    return(<div><Hdr t={`Repetidas (${dupes})`}/><div style={{padding:"8px 12px"}}>
+      {d.length>0&&<button onClick={shareRepesWA} style={{width:"100%",padding:"10px",background:"#25D366",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        📱 Compartir repetidas por WhatsApp
+      </button>}
+      {d.length===0?<div style={{textAlign:"center",padding:40,color:X.dm,fontSize:12}}>No tienes repetidas aún</div>
     :d.map(s=>(<div key={s.id} style={{display:"flex",alignItems:"center",padding:"6px 8px",background:X.cd,borderRadius:4,gap:6,marginBottom:2}}>
       <span style={{fontSize:9,fontWeight:700,color:X.gd,minWidth:42}}>{s.id}</span><span style={{fontSize:11,flex:1}}>{s.name}</span><span style={{fontSize:12}}>{s.tf}</span>
       <div style={{display:"flex",alignItems:"center",gap:4}}>
@@ -483,6 +511,59 @@ export default function App(){
         <span style={{fontSize:11,fontWeight:700,color:X.gd}}>×{s.qty}</span>
         <button onClick={e=>addD(s.id,e)} style={{width:18,height:18,borderRadius:3,border:"none",background:"rgba(255,255,255,0.1)",color:"#fff",fontSize:12,cursor:"pointer",fontWeight:800}}>+</button>
       </div></div>))}</div></div>);};
+
+  // ─── Admin Panel (/luigiadmin) ───
+  const[adminData,setAdminData]=useState(null);
+  const isAdmin=user&&user.email===ADMIN_EMAIL;
+  const isAdminRoute=window.location.pathname==="/luigiadmin";
+
+  useEffect(()=>{
+    if(isAdmin&&isAdminRoute&&token){
+      Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/rpc/admin_stats`,{method:"POST",headers:supa.headers(token)}).then(r=>r.json()),
+        fetch(`${SUPA_URL}/rest/v1/rpc/admin_most_missing`,{method:"POST",headers:supa.headers(token)}).then(r=>r.json()),
+      ]).then(([stats,missing])=>setAdminData({stats:Array.isArray(stats)?stats[0]:stats,missing})).catch(e=>console.error("Admin fetch:",e));
+    }
+  },[isAdmin,isAdminRoute,token]);
+
+  const vAdmin=()=>{
+    if(!isAdmin)return <div style={{padding:40,textAlign:"center",color:X.pr}}>No autorizado</div>;
+    if(!adminData)return <div style={{padding:40,textAlign:"center",color:X.dm}}>Cargando...</div>;
+    const s=adminData.stats||{};
+    return(
+      <div>
+        <Hdr t="Admin Panel"/>
+        <div style={{padding:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+            {[
+              {l:"Usuarios",v:s.total_users||0,c:X.gn},
+              {l:"Cartitas Registradas",v:(s.total_stickers||0).toLocaleString("en-US"),c:X.gd},
+              {l:"Promedio por Usuario",v:s.avg_per_user?Math.round(s.avg_per_user):0,c:"#fff"},
+              {l:"Usuarios Hoy",v:s.users_today||0,c:X.pr},
+            ].map(x=>(
+              <div key={x.l} style={{background:X.cd,borderRadius:8,padding:12,border:`1px solid ${X.bd}`}}>
+                <div style={{fontSize:20,fontWeight:800,color:x.c}}>{x.v}</div>
+                <div style={{fontSize:9,color:X.dm,textTransform:"uppercase",letterSpacing:1,marginTop:2}}>{x.l}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:X.cd,borderRadius:8,padding:12,border:`1px solid ${X.bd}`}}>
+            <div style={{fontSize:11,fontWeight:700,color:X.dm,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Top Estampas Más Faltantes</div>
+            {(adminData.missing||[]).slice(0,15).map((m,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${X.bd}`,gap:8}}>
+                <span style={{fontSize:10,fontWeight:800,color:X.pr,minWidth:30}}>{i+1}.</span>
+                <span style={{fontSize:11,flex:1}}>{m.sticker_id}</span>
+                <span style={{fontSize:10,color:X.dm}}>{m.missing_count} usuarios</span>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:12,padding:10,background:"rgba(240,192,64,0.08)",borderRadius:8,border:`1px solid ${X.bd}`}}>
+            <div style={{fontSize:10,color:X.dm}}>📊 Para ver clicks en donaciones y tráfico detallado, revisa <a href="https://analytics.google.com" target="_blank" rel="noopener" style={{color:X.gd}}>Google Analytics</a></div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const vSrch=()=>{const res=q.length>=2?(()=>{const ql=q.toLowerCase(),r=[];TEAMS.forEach(t=>t.stickers.forEach(s=>{if(s.name.toLowerCase().includes(ql)||s.id.toLowerCase().includes(ql))r.push({...s,tn:t.n,tf:t.f});}));return r.slice(0,30);})():[];
     return(<div><Hdr t="Buscar"/><div style={{padding:"8px 12px"}}><div style={{position:"relative"}}><span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:14,color:X.dm}}>🔍</span>
@@ -492,9 +573,18 @@ export default function App(){
           <span style={{fontSize:9,fontWeight:700,color:has?X.gn:X.dm,minWidth:42}}>{s.id}</span><div style={{flex:1}}><div style={{fontSize:11,fontWeight:600}}>{s.name}</div><div style={{fontSize:9,color:X.dm}}>{s.tf} {s.tn}</div></div>{has&&<span style={{color:X.gn,fontSize:12}}>✓</span>}</div>);})}</div>}
     </div></div>);};
 
+  // ─── Admin route check ───
+  if(isAdminRoute&&user){
+    return(
+      <div style={{background:X.bg,minHeight:"100vh",color:X.tx,fontFamily:"'DM Sans','Segoe UI',system-ui,sans-serif",maxWidth:480,margin:"0 auto"}}>
+        {vAdmin()}
+      </div>
+    );
+  }
+
   return(
     <div style={{background:X.bg,minHeight:"100vh",color:X.tx,fontFamily:"'DM Sans','Segoe UI',system-ui,sans-serif",maxWidth:480,margin:"0 auto",paddingBottom:68}}>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}} @media(max-width:480px){.hdr-sub{display:none!important;}}`}</style>
       {view==="home"&&vHome()}{view==="grp"&&vGrp()}{view==="team"&&vTeam()}{view==="missing"&&vMiss()}{view==="dupes"&&vDup()}{view==="search"&&vSrch()}
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,display:"flex",background:X.sf,borderTop:`1px solid ${X.bd}`,zIndex:100}}>
         {[{id:"home",i:"📖",l:"Álbum"},{id:"missing",i:"❌",l:"Faltan"},{id:"dupes",i:"🔄",l:"Repes"},{id:"search",i:"🔍",l:"Buscar"}].map(tab=>(
