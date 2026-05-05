@@ -132,6 +132,16 @@ export default function App(){
   const[lastSync,setLastSync]=useState(null);
   const syncTimer=useRef(null);
 
+  // ─── Donation tips (random rotation) ───
+  const TIPS=[
+    {emoji:"☕",label:"Café",link:"https://mpago.la/1ibN2zK"},
+    {emoji:"🍺",label:"Chela",link:"https://mpago.la/2GLeU72"},
+    {emoji:"🌮",label:"Tacos",link:"https://mpago.la/1r4gTSc"},
+  ];
+  const[tipIdx,setTipIdx]=useState(()=>Math.floor(Math.random()*3));
+  useEffect(()=>{const iv=setInterval(()=>setTipIdx(p=>(p+1)%3),15000);return()=>clearInterval(iv);},[]);
+  const tip=TIPS[tipIdx];
+
   // ─── Colors ───
   const X={bg:"#0c1220",sf:"#141e30",cd:"#1a2540",pr:"#e8364f",gn:"#34d399",gd:"#f0c040",tx:"#e2e8f0",dm:"#94a3b8",bd:"#1e293b"};
 
@@ -331,9 +341,11 @@ export default function App(){
       {back&&<button onClick={onBack} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:7,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>}
       <h1 style={{fontSize:16,fontWeight:800,color:"#fff",margin:0,textTransform:"uppercase",letterSpacing:-0.3}}>{t}</h1>
       <div style={{fontSize:8,color:"rgba(255,255,255,0.55)",marginTop:1,letterSpacing:2,textTransform:"uppercase"}}>Mundial 2026</div>
-      {/* Sync indicator + user */}
       {user&&<div style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:4}}>
         {syncing&&<div style={{width:6,height:6,borderRadius:3,background:X.gd,animation:"pulse 1s infinite"}}/>}
+        <button onClick={()=>window.open(tip.link,"_blank")} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",fontSize:9,padding:"3px 7px",borderRadius:4,cursor:"pointer",fontWeight:600,display:"flex",alignItems:"center",gap:2,transition:"all 0.3s"}}>
+          <span style={{fontSize:12}}>{tip.emoji}</span>
+        </button>
         <button onClick={logout} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:9,padding:"3px 6px",borderRadius:4,cursor:"pointer",fontWeight:600}}>Salir</button>
       </div>}
     </div>
@@ -422,11 +434,15 @@ export default function App(){
       </div>
       {/* Donate banner */}
       <div style={{margin:"8px 12px 16px",padding:"12px 14px",background:"linear-gradient(135deg,rgba(240,192,64,0.12),rgba(232,54,79,0.08))",borderRadius:10,border:"1px solid rgba(240,192,64,0.2)"}}>
-        <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>¿Te gusta la app? Invítame una chela 🍺</div>
+        <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>¿Te gusta la app? {tip.emoji}</div>
         <div style={{fontSize:10,color:X.dm,marginBottom:8}}>Esta app es gratis. Si te sirve, una donación ayuda a mantenerla.</div>
-        <button onClick={()=>window.open("https://mpago.la/2GLeU72","_blank")} style={{background:X.gd,border:"none",borderRadius:6,padding:"8px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer"}}>
-          Invítame una chela 🍺
-        </button>
+        <div style={{display:"flex",gap:6}}>
+          {TIPS.map((t,i)=>(
+            <button key={i} onClick={()=>window.open(t.link,"_blank")} style={{flex:1,background:i===tipIdx?X.gd:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"8px 4px",fontSize:11,fontWeight:700,color:i===tipIdx?"#000":X.tx,cursor:"pointer",transition:"all 0.3s"}}>
+              {t.emoji} {t.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
