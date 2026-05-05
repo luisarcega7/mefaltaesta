@@ -343,8 +343,8 @@ export default function App(){
       <div style={{fontSize:8,color:"rgba(255,255,255,0.55)",marginTop:1,letterSpacing:2,textTransform:"uppercase"}}>Mundial 2026</div>
       {user&&<div style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:4}}>
         {syncing&&<div style={{width:6,height:6,borderRadius:3,background:X.gd,animation:"pulse 1s infinite"}}/>}
-        <button onClick={()=>window.open(tip.link,"_blank")} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",fontSize:9,padding:"3px 7px",borderRadius:4,cursor:"pointer",fontWeight:600,display:"flex",alignItems:"center",gap:2,transition:"all 0.3s"}}>
-          <span style={{fontSize:12}}>{tip.emoji}</span>
+        <button onClick={()=>window.open(tip.link,"_blank")} style={{background:X.gd,border:"none",color:"#000",fontSize:10,padding:"4px 8px",borderRadius:6,cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",gap:3,transition:"all 0.3s"}}>
+          <span style={{fontSize:14}}>{tip.emoji}</span>{tip.label}
         </button>
         <button onClick={logout} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:9,padding:"3px 6px",borderRadius:4,cursor:"pointer",fontWeight:600}}>Salir</button>
       </div>}
