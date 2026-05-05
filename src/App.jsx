@@ -132,6 +132,7 @@ export default function App(){
   const[lastSync,setLastSync]=useState(null);
   const syncTimer=useRef(null);
   const[totalGlobal,setTotalGlobal]=useState(0);
+  const[adminData,setAdminData]=useState(null);
 
   // ─── Donation tips (random rotation) ───
   const TIPS=[
@@ -166,6 +167,18 @@ export default function App(){
     fetch(`${SUPA_URL}/rest/v1/rpc/get_global_sticker_count`,{method:"POST",headers:{"apikey":SUPA_KEY,"Content-Type":"application/json"}})
       .then(r=>r.json()).then(n=>{if(typeof n==="number")setTotalGlobal(n);}).catch(()=>{});
   },[lastSync]);
+
+  // ─── Admin data fetch ───
+  const isAdmin=user&&user.email===ADMIN_EMAIL;
+  const isAdminRoute=window.location.pathname==="/luigiadmin";
+  useEffect(()=>{
+    if(isAdmin&&isAdminRoute&&token){
+      Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/rpc/admin_stats`,{method:"POST",headers:supa.headers(token)}).then(r=>r.json()),
+        fetch(`${SUPA_URL}/rest/v1/rpc/admin_most_missing`,{method:"POST",headers:supa.headers(token)}).then(r=>r.json()),
+      ]).then(([stats,missing])=>setAdminData({stats:Array.isArray(stats)?stats[0]:stats,missing})).catch(e=>console.error("Admin fetch:",e));
+    }
+  },[isAdmin,token]);
 
   // ─── Google Analytics helper ───
   const gtag=(...args)=>{if(window.gtag)window.gtag(...args);};
@@ -513,19 +526,6 @@ export default function App(){
       </div></div>))}</div></div>);};
 
   // ─── Admin Panel (/luigiadmin) ───
-  const[adminData,setAdminData]=useState(null);
-  const isAdmin=user&&user.email===ADMIN_EMAIL;
-  const isAdminRoute=window.location.pathname==="/luigiadmin";
-
-  useEffect(()=>{
-    if(isAdmin&&isAdminRoute&&token){
-      Promise.all([
-        fetch(`${SUPA_URL}/rest/v1/rpc/admin_stats`,{method:"POST",headers:supa.headers(token)}).then(r=>r.json()),
-        fetch(`${SUPA_URL}/rest/v1/rpc/admin_most_missing`,{method:"POST",headers:supa.headers(token)}).then(r=>r.json()),
-      ]).then(([stats,missing])=>setAdminData({stats:Array.isArray(stats)?stats[0]:stats,missing})).catch(e=>console.error("Admin fetch:",e));
-    }
-  },[isAdmin,isAdminRoute,token]);
-
   const vAdmin=()=>{
     if(!isAdmin)return <div style={{padding:40,textAlign:"center",color:X.pr}}>No autorizado</div>;
     if(!adminData)return <div style={{padding:40,textAlign:"center",color:X.dm}}>Cargando...</div>;
