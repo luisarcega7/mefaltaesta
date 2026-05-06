@@ -217,6 +217,8 @@ export default function App(){
       if(d.length>0)repes.push({flag:t.f,code:t.c,items:d});
     });
 
+    alert("Paso 2: data lista. Missing="+missing.length+" Repes="+repes.length);
+
     // Build the hidden div
     const W=1080;
     const el=document.createElement("div");
@@ -301,8 +303,8 @@ export default function App(){
     document.body.appendChild(el);
     
     try{
-      // Small delay to let the DOM render the element
       await new Promise(r=>setTimeout(r,100));
+      alert("Paso 3: DOM listo, llamando html2canvas");
       
       const canvas=await window.html2canvas(el,{
         scale:1,
@@ -311,6 +313,8 @@ export default function App(){
         width:W,
         windowWidth:W,
       });
+      
+      alert("Paso 4: canvas generado "+canvas.width+"x"+canvas.height);
       
       document.body.removeChild(el);
       
