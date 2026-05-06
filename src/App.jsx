@@ -187,6 +187,7 @@ export default function App(){
   // ─── Generate Story Image ───
   const[genImg,setGenImg]=useState(false);
   const generateStoryImage=async()=>{
+    try{
     setGenImg(true);
     trackEvent("click","share","generate_story_image");
     
@@ -195,6 +196,8 @@ export default function App(){
       setGenImg(false);
       return;
     }
+    
+    alert("Paso 1: inicio");
     
     // Gather missing stickers
     const missing=[];
@@ -331,6 +334,7 @@ export default function App(){
       try{document.body.removeChild(el);}catch(_){}
     }
     setGenImg(false);
+    }catch(outerErr){alert("Outer error: "+outerErr.message);setGenImg(false);}
   };
 
   // ─── Load stickers from Supabase ───
