@@ -170,7 +170,7 @@ export default function App(){
 
   // ─── Admin data fetch ───
   const isAdmin=user&&user.email===ADMIN_EMAIL;
-  const isAdminRoute=window.location.pathname==="/luigiadmin";
+  const isAdminRoute=window.location.pathname.replace(/\/$/,"")==="/luigiadmin";
   useEffect(()=>{
     if(isAdmin&&isAdminRoute&&token){
       Promise.all([
@@ -300,13 +300,18 @@ export default function App(){
         windowWidth:W,
       });
       
-      canvas.toBlob(blob=>{
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");
-        a.href=url;
-        a.download="me-falta-esta.png";
-        a.click();
-        URL.revokeObjectURL(url);
+      canvas.toBlob(async(blob)=>{
+        const file=new File([blob],"me-falta-esta.png",{type:"image/png"});
+        if(navigator.canShare&&navigator.canShare({files:[file]})){
+          try{
+            await navigator.share({files:[file],title:"Me Falta Esta",text:"Mi lista del álbum del Mundial 2026 🏆⚽"});
+          }catch(e){if(e.name!=="AbortError")console.error("Share error:",e);}
+        }else{
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");
+          a.href=url;a.download="me-falta-esta.png";a.click();
+          URL.revokeObjectURL(url);
+        }
         setGenImg(false);
       },"image/png");
     }catch(e){
