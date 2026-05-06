@@ -190,6 +190,12 @@ export default function App(){
     setGenImg(true);
     trackEvent("click","share","generate_story_image");
     
+    if(!window.html2canvas){
+      alert("html2canvas no cargó. Intenta recargar la página.");
+      setGenImg(false);
+      return;
+    }
+    
     // Gather missing stickers
     const missing=[];
     const introMiss=INTRO.filter(s=>!col[s.id]).map(s=>s.id);
