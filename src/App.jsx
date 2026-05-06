@@ -184,6 +184,139 @@ export default function App(){
   const gtag=(...args)=>{if(window.gtag)window.gtag(...args);};
   const trackEvent=(action,category,label)=>gtag("event",action,{event_category:category,event_label:label});
 
+  // ─── Generate Story Image ───
+  const[genImg,setGenImg]=useState(false);
+  const generateStoryImage=async()=>{
+    setGenImg(true);
+    trackEvent("click","share","generate_story_image");
+    
+    // Gather missing stickers
+    const missing=[];
+    const introMiss=INTRO.filter(s=>!col[s.id]).map(s=>s.id);
+    const histMiss=HIST.filter(s=>!col[s.id]).map(s=>s.id);
+    if(introMiss.length>0)missing.push({flag:"⚽",code:"INTRO",nums:introMiss});
+    if(histMiss.length>0)missing.push({flag:"🏆",code:"HIST",nums:histMiss});
+    TEAMS.forEach(t=>{
+      const m=t.stickers.filter(s=>!col[s.id]||col[s.id]===0).map(s=>s.num);
+      if(m.length>0)missing.push({flag:t.f,code:t.c,nums:m});
+    });
+    
+    // Gather dupes
+    const repes=[];
+    TEAMS.forEach(t=>{
+      const d=t.stickers.filter(s=>(col[s.id]||0)>1).map(s=>({num:s.num,qty:col[s.id]}));
+      if(d.length>0)repes.push({flag:t.f,code:t.c,items:d});
+    });
+
+    // Build the hidden div
+    const W=1080;
+    const el=document.createElement("div");
+    el.style.cssText=`position:fixed;left:-9999px;top:0;width:${W}px;font-family:'DM Sans','Segoe UI',system-ui,sans-serif;background:linear-gradient(180deg,#0c1220 0%,#111827 100%);color:#e2e8f0;padding:0;`;
+    
+    // Helper to build country row HTML
+    const rowHTML=(items,isDupe)=>items.map(t=>{
+      const nums=isDupe
+        ?t.items.map(d=>`<span style="display:inline-block;background:rgba(240,192,64,0.15);border:1px solid rgba(240,192,64,0.3);border-radius:4px;padding:2px 6px;font-size:20px;font-weight:700;color:#f0c040;margin:2px;">${d.num}<span style="font-size:14px;opacity:0.7">×${d.qty}</span></span>`).join("")
+        :t.nums.map(n=>`<span style="display:inline-block;background:rgba(232,54,79,0.12);border:1px solid rgba(232,54,79,0.25);border-radius:4px;padding:2px 6px;font-size:20px;font-weight:700;color:#e8364f;margin:2px;">${n}</span>`).join("");
+      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+        <span style="font-size:28px;flex-shrink:0;">${t.flag}</span>
+        <span style="font-size:22px;font-weight:800;color:#fff;min-width:65px;letter-spacing:0.5px;">${t.code}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;flex:1;">${nums}</div>
+      </div>`;
+    }).join("");
+
+    el.innerHTML=`
+      <div style="padding:60px 50px 40px;">
+        <!-- Header -->
+        <div style="text-align:center;margin-bottom:40px;">
+          <div style="font-size:56px;font-weight:900;text-transform:uppercase;letter-spacing:-1px;color:#fff;line-height:1;">Me Falta Esta</div>
+          <div style="font-size:20px;color:rgba(255,255,255,0.4);letter-spacing:6px;text-transform:uppercase;margin-top:6px;">Mundial 2026</div>
+          <div style="margin-top:20px;display:flex;justify-content:center;gap:40px;">
+            <div style="text-align:center;"><div style="font-size:42px;font-weight:800;color:#34d399;">${owned}</div><div style="font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">Tengo</div></div>
+            <div style="text-align:center;"><div style="font-size:42px;font-weight:800;color:#e8364f;">${miss}</div><div style="font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">Faltan</div></div>
+            <div style="text-align:center;"><div style="font-size:42px;font-weight:800;color:#f0c040;">${dupes}</div><div style="font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">Repes</div></div>
+            <div style="text-align:center;"><div style="font-size:42px;font-weight:800;color:#fff;">${pct}%</div><div style="font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">Avance</div></div>
+          </div>
+          <!-- Progress bar -->
+          <div style="margin-top:16px;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#e8364f,#f0c040);border-radius:4px;"></div>
+          </div>
+        </div>
+
+        ${missing.length>0?`
+        <!-- Missing Section -->
+        <div style="margin-bottom:36px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,rgba(232,54,79,0.4));"></div>
+            <div style="font-size:22px;font-weight:800;text-transform:uppercase;letter-spacing:3px;color:#e8364f;">❌ Me Faltan</div>
+            <div style="height:1px;flex:1;background:linear-gradient(90deg,rgba(232,54,79,0.4),transparent);"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 30px;">
+            ${(()=>{
+              const half=Math.ceil(missing.length/2);
+              const col1=missing.slice(0,half);
+              const col2=missing.slice(half);
+              return`<div>${rowHTML(col1,false)}</div><div>${rowHTML(col2,false)}</div>`;
+            })()}
+          </div>
+        </div>
+        `:""}
+
+        ${repes.length>0?`
+        <!-- Repes Section -->
+        <div style="margin-bottom:36px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,rgba(240,192,64,0.4));"></div>
+            <div style="font-size:22px;font-weight:800;text-transform:uppercase;letter-spacing:3px;color:#f0c040;">🔄 Repetidas</div>
+            <div style="height:1px;flex:1;background:linear-gradient(90deg,rgba(240,192,64,0.4),transparent);"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 30px;">
+            ${(()=>{
+              const half=Math.ceil(repes.length/2);
+              const col1=repes.slice(0,half);
+              const col2=repes.slice(half);
+              return`<div>${rowHTML(col1,true)}</div><div>${rowHTML(col2,true)}</div>`;
+            })()}
+          </div>
+        </div>
+        `:""}
+
+        <!-- Footer branding -->
+        <div style="text-align:center;padding-top:30px;border-top:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:18px;font-weight:700;color:rgba(240,192,64,0.5);letter-spacing:4px;text-transform:uppercase;">mefaltaesta.com</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.2);margin-top:6px;">Registra tus estampas gratis</div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(el);
+    
+    try{
+      const canvas=await window.html2canvas(el,{
+        scale:1,
+        useCORS:true,
+        backgroundColor:null,
+        width:W,
+        windowWidth:W,
+      });
+      
+      canvas.toBlob(blob=>{
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;
+        a.download="me-falta-esta.png";
+        a.click();
+        URL.revokeObjectURL(url);
+        setGenImg(false);
+      },"image/png");
+    }catch(e){
+      console.error("Image generation error:",e);
+      setGenImg(false);
+    }
+    
+    document.body.removeChild(el);
+  };
+
   // ─── Load stickers from Supabase ───
   const loadStickers=async(uid,tok)=>{
     try{
@@ -441,6 +574,11 @@ export default function App(){
         ⚽ {totalGlobal.toLocaleString("en-US")} cartitas registradas al momento
       </div>}
       <div style={{height:3,background:X.bd,margin:"0 12px",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg,${X.pr},${X.gd})`,borderRadius:2,transition:"width 0.5s"}}/></div>
+      <div style={{padding:"8px 12px 0"}}>
+        <button onClick={generateStoryImage} disabled={genImg} style={{width:"100%",padding:"10px",background:"linear-gradient(135deg,rgba(232,54,79,0.12),rgba(240,192,64,0.12))",border:"1px solid rgba(240,192,64,0.2)",borderRadius:8,color:X.tx,fontSize:12,fontWeight:700,cursor:genImg?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:genImg?0.6:1}}>
+          {genImg?"⏳ Generando...":"📸 Compartir mi lista"}
+        </button>
+      </div>
       <div style={{padding:"12px 12px 6px"}}>
         <div style={{fontSize:10,fontWeight:700,color:X.dm,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Introducción</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:3,marginBottom:10}}>{INTRO.map(s=><SC key={s.id} s={{...s,num:s.id}} tc=""/>)}</div>
