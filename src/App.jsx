@@ -197,8 +197,6 @@ export default function App(){
       return;
     }
     
-    alert("Paso 1: inicio");
-    
     // Gather missing stickers
     const missing=[];
     const introMiss=INTRO.filter(s=>!col[s.id]).map(s=>s.id);
@@ -216,8 +214,6 @@ export default function App(){
       const d=t.stickers.filter(s=>(col[s.id]||0)>1).map(s=>({num:s.num,qty:col[s.id]}));
       if(d.length>0)repes.push({flag:t.f,code:t.c,items:d});
     });
-
-    alert("Paso 2: data lista. Missing="+missing.length+" Repes="+repes.length);
 
     // Build the hidden div
     const W=1080;
@@ -304,7 +300,6 @@ export default function App(){
     
     try{
       await new Promise(r=>setTimeout(r,100));
-      alert("Paso 3: DOM listo, llamando html2canvas");
       
       const canvas=await window.html2canvas(el,{
         scale:1,
@@ -314,26 +309,40 @@ export default function App(){
         windowWidth:W,
       });
       
-      alert("Paso 4: canvas generado "+canvas.width+"x"+canvas.height);
-      
       document.body.removeChild(el);
       
       const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
-      alert("Paso 5: blob="+(blob?blob.size+" bytes":"NULL"));
       if(!blob){setGenImg(false);return;}
       
+      // Detect Chrome on iOS (CriOS) — navigator.share with files fails silently
+      const isChromeIOS=/CriOS/.test(navigator.userAgent);
       const file=new File([blob],"me-falta-esta.png",{type:"image/png"});
-      const canShare=navigator.canShare&&navigator.canShare({files:[file]});
-      alert("Paso 6: canShare="+canShare);
+      const canShare=!isChromeIOS&&navigator.canShare&&navigator.canShare({files:[file]});
+      
       if(canShare){
         try{
           await navigator.share({files:[file],title:"Me Falta Esta",text:"Mi lista del álbum del Mundial 2026 🏆⚽"});
         }catch(e){if(e.name!=="AbortError")console.error("Share error:",e);}
       }else{
+        // Fallback: open image in overlay for long-press save (iOS Chrome) or download (desktop)
         const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");
-        a.href=url;a.download="me-falta-esta.png";a.click();
-        URL.revokeObjectURL(url);
+        const isIOS=/iPhone|iPad/.test(navigator.userAgent);
+        if(isIOS){
+          // Show fullscreen overlay with the image
+          const overlay=document.createElement("div");
+          overlay.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.95);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;overflow:auto;";
+          overlay.innerHTML=`
+            <div style="color:#fff;font-size:14px;font-weight:700;margin-bottom:12px;text-align:center;">Mantén presionada la imagen para guardar o compartir</div>
+            <img src="${url}" style="width:100%;max-width:400px;border-radius:8px;"/>
+            <button id="mfe-close" style="margin-top:16px;padding:10px 30px;background:#e8364f;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Cerrar</button>
+          `;
+          document.body.appendChild(overlay);
+          document.getElementById("mfe-close").onclick=()=>{document.body.removeChild(overlay);URL.revokeObjectURL(url);};
+        }else{
+          const a=document.createElement("a");
+          a.href=url;a.download="me-falta-esta.png";a.click();
+          URL.revokeObjectURL(url);
+        }
       }
     }catch(e){
       alert("Error: "+e.message);
