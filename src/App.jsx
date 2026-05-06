@@ -319,10 +319,13 @@ export default function App(){
       document.body.removeChild(el);
       
       const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+      alert("Paso 5: blob="+(blob?blob.size+" bytes":"NULL"));
       if(!blob){setGenImg(false);return;}
       
       const file=new File([blob],"me-falta-esta.png",{type:"image/png"});
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
+      const canShare=navigator.canShare&&navigator.canShare({files:[file]});
+      alert("Paso 6: canShare="+canShare);
+      if(canShare){
         try{
           await navigator.share({files:[file],title:"Me Falta Esta",text:"Mi lista del álbum del Mundial 2026 🏆⚽"});
         }catch(e){if(e.name!=="AbortError")console.error("Share error:",e);}
