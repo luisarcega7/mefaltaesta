@@ -320,6 +320,7 @@ export default function App(){
         URL.revokeObjectURL(url);
       }
     }catch(e){
+      alert("Error: "+e.message);
       console.error("Image generation error:",e);
       try{document.body.removeChild(el);}catch(_){}
     }
