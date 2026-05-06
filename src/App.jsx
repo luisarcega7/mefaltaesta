@@ -292,34 +292,38 @@ export default function App(){
     document.body.appendChild(el);
     
     try{
+      // Small delay to let the DOM render the element
+      await new Promise(r=>setTimeout(r,100));
+      
       const canvas=await window.html2canvas(el,{
         scale:1,
         useCORS:true,
-        backgroundColor:null,
+        backgroundColor:"#0c1220",
         width:W,
         windowWidth:W,
       });
       
-      canvas.toBlob(async(blob)=>{
-        const file=new File([blob],"me-falta-esta.png",{type:"image/png"});
-        if(navigator.canShare&&navigator.canShare({files:[file]})){
-          try{
-            await navigator.share({files:[file],title:"Me Falta Esta",text:"Mi lista del álbum del Mundial 2026 🏆⚽"});
-          }catch(e){if(e.name!=="AbortError")console.error("Share error:",e);}
-        }else{
-          const url=URL.createObjectURL(blob);
-          const a=document.createElement("a");
-          a.href=url;a.download="me-falta-esta.png";a.click();
-          URL.revokeObjectURL(url);
-        }
-        setGenImg(false);
-      },"image/png");
+      document.body.removeChild(el);
+      
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+      if(!blob){setGenImg(false);return;}
+      
+      const file=new File([blob],"me-falta-esta.png",{type:"image/png"});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({files:[file],title:"Me Falta Esta",text:"Mi lista del álbum del Mundial 2026 🏆⚽"});
+        }catch(e){if(e.name!=="AbortError")console.error("Share error:",e);}
+      }else{
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;a.download="me-falta-esta.png";a.click();
+        URL.revokeObjectURL(url);
+      }
     }catch(e){
       console.error("Image generation error:",e);
-      setGenImg(false);
+      try{document.body.removeChild(el);}catch(_){}
     }
-    
-    document.body.removeChild(el);
+    setGenImg(false);
   };
 
   // ─── Load stickers from Supabase ───
